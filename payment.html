@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Payment | MOM'S KITCHEN</title>
+  <style>
+    body{font-family:Arial;background:#fffaf4;margin:0;padding:20px}
+    .pay-box{max-width:700px;margin:2rem auto;background:white;padding:1.5rem;border-radius:12px;box-shadow:0 6px 20px rgba(0,0,0,0.08)}
+    table{width:100%;border-collapse:collapse}
+    th,td{padding:8px;text-align:left;border-bottom:1px solid #f0f0f0}
+    .total{font-weight:700}
+    button{background:#c2410c;color:#fff;border:none;padding:12px;border-radius:10px;cursor:pointer;width:100%}
+  </style>
+</head>
+<body>
+  <div class="pay-box">
+    <h2>Complete Payment</h2>
+    <div id="order-info"></div>
+    <h3 style="margin-top:12px">Choose Payment Method</h3>
+    <label><input type="radio" name="method" value="UPI"> UPI</label><br>
+    <label><input type="radio" name="method" value="Card"> Credit / Debit Card</label><br>
+    <label><input type="radio" name="method" value="COD"> Cash on Delivery</label><br>
+    <button id="pay-now">Pay Now</button>
+    <p id="msg" style="color:green;margin-top:12px"></p>
+  </div>
+
+  <script>
+    function readOrders() { try { return JSON.parse(localStorage.getItem('moms_orders') || '[]'); } catch(e) { return []; } }
+    const params = new URLSearchParams(window.location.search);
+    const orderId = params.get('orderId');
+
+    const orders = readOrders();
+    const order = orders.find(o => String(o.id) === String(orderId));
+    const info = document.getElementById('order-info');
+
+    if (!order) {
+      info.innerHTML = '<p>Order not found. Please go back and try again.</p>';
+    } else {
+      let html = `<div><strong>Order ID:</strong> ${order.id}</div><div style="margin-top:8px"><strong>Customer:</strong> ${order.customer.name} — ${order.customer.phone}</div>`;
+      html += '<table style="margin-top:10px"><thead><tr><th>Item</th><th>Qty</th><th>Price</th></tr></thead><tbody>';
+      order.items.forEach(it => {
+        html += `<tr><td>${it.name}</td><td>${it.quantity}</td><td>₹${(it.price*it.quantity).toFixed(0)}</td></tr>`;
+      });
+      html += `</tbody></table><div style="margin-top:10px" class="total">Total: ₹${order.total.toFixed(0)}</div>`;
+      info.innerHTML = html;
+    }
+
+    document.getElementById('pay-now').addEventListener('click', () => {
+      if (!order) return;
+      document.getElementById('msg').textContent = 'Payment successful! Thank you — your order is confirmed.';
+      // Optionally mark order as paid in localStorage
+      const ordersAll = readOrders();
+      const idx = ordersAll.findIndex(o => String(o.id) === String(order.id));
+      if (idx !== -1) {
+        ordersAll[idx].paid = true;
+        localStorage.setItem('moms_orders', JSON.stringify(ordersAll));
+      }
+      // After payment, optionally redirect to a "thank you" or home page
+      setTimeout(() => { window.location.href = 'index.html'; }, 2200);
+    });
+  </script>
+</body>
+</html>

@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Order | MOM'S KITCHEN</title>
+  <link rel="stylesheet" href="styles.css" />
+  <style>
+    body{background:#fff7ef}
+    .box{max-width:760px;margin:2rem auto;background:white;padding:1.25rem;border-radius:12px;box-shadow:0 8px 30px rgba(0,0,0,0.08)}
+    .cart-row{display:flex;gap:12px;align-items:center;padding:10px 0;border-bottom:1px dashed #eee}
+    .cart-row img{width:80px;height:60px;object-fit:cover;border-radius:8px}
+    .cart-actions button{padding:6px 8px;border-radius:8px;border:none;cursor:pointer}
+    .summary{margin-top:12px;font-weight:700}
+    .place{margin-top:12px;background:#c2410c;color:white;padding:10px;border-radius:10px;border:none;cursor:pointer;width:100%}
+  </style>
+</head>
+<body>
+  <div class="box">
+    <h2>Your Order</h2>
+    <div id="cart-list"></div>
+
+    <div class="summary" id="order-summary"></div>
+
+    <h3 style="margin-top:14px">Delivery details</h3>
+    <label>Name</label><input id="o-name" style="width:100%;padding:8px;margin-top:6px;border-radius:8px;border:1px solid #eaeaea">
+    <label style="margin-top:8px">Phone</label><input id="o-phone" style="width:100%;padding:8px;margin-top:6px;border-radius:8px;border:1px solid #eaeaea">
+    <label style="margin-top:8px">Address</label><textarea id="o-address" rows="3" style="width:100%;padding:8px;margin-top:6px;border-radius:8px;border:1px solid #eaeaea"></textarea>
+
+    <button id="place-order" class="place">Place Order & Go to Payment</button>
+    <p id="order-msg" style="color:green;margin-top:10px"></p>
+  </div>
+
+  <script>
+    // Read cart from localStorage
+    function readCart() { try { return JSON.parse(localStorage.getItem('moms_cart') || '{}'); } catch(e) { return {}; } }
+    function writeOrders(orders) { localStorage.setItem('moms_orders', JSON.stringify(orders)); }
+
+    function renderCartList() {
+      const cart = readCart();
+      const list = document.getElementById('cart-list');
+      list.innerHTML = '';
+      const keys = Object.keys(cart);
+      if (keys.length === 0) { list.innerHTML = '<p>Your cart is empty. Go back and add items.</p>'; document.getElementById('order-summary').textContent = ''; return; }
+      let total = 0;
+      keys.forEach(k => {
+        const it = cart[k];
+        total += it.price * it.quantity;
+        const row = document.createElement('div');
+        row.className = 'cart-row';
+        row.innerHTML = `<img src="${it.img || 'images/hero-banner.jpg'}" alt="${it.name}">
+          <div style="flex:1">
+            <div style="font-weight:600">${it.name}</div>
+            <div style="color:#6b7280">₹${it.price} × ${it.quantity} = ₹${(it.price*it.quantity).toFixed(0)}</div>
+            <div class="cart-actions" style="margin-top:6px">
+              <button class="dec" data-key="${k}">-</button>
+              <button class="inc" data-key="${k}">+</button>
+              <button class="rm" data-key="${k}">Remove</button>
+            </div>
+          </div>`;
+        list.appendChild(row);
+      });
+      document.getElementById('order-summary').textContent = 'Total: ₹' + total.toFixed(0);
+      attachCartButtons();
+    }
+
+    function attachCartButtons() {
+      document.querySelectorAll('.inc').forEach(b => {
+        b.addEventListener('click', () => {
+          const k = b.dataset.key; const cart = readCart(); if (cart[k]) cart[k].quantity++; localStorage.setItem('moms_cart', JSON.stringify(cart)); renderCartList();
+        });
+      });
+      document.querySelectorAll('.dec').forEach(b => {
+        b.addEventListener('click', () => {
+          const k = b.dataset.key; const cart = readCart(); if (cart[k]) { cart[k].quantity = Math.max(0, cart[k].quantity-1); if (cart[k].quantity===0) delete cart[k]; localStorage.setItem('moms_cart', JSON.stringify(cart)); } renderCartList();
+        });
+      });
+      document.querySelectorAll('.rm').forEach(b => {
+        b.addEventListener('click', () => {
+          const k = b.dataset.key; const cart = readCart(); delete cart[k]; localStorage.setItem('moms_cart', JSON.stringify(cart)); renderCartList();
+        });
+      });
+    }
+
+    // initial render
+    renderCartList();
+
+    // Place Order -> saves order and redirects to payment.html
+    document.getElementById('place-order').addEventListener('click', () => {
+      const name = document.getElementById('o-name').value.trim();
+      const phone = document.getElementById('o-phone').value.trim();
+      const address = document.getElementById('o-address').value.trim();
+      const cart = readCart();
+      const keys = Object.keys(cart);
+      if (keys.length === 0) { alert('Cart is empty'); return; }
+      if (!name || !phone) { alert('Please enter name and phone'); return; }
+
+      // build order
+      let total = 0;
+      const items = keys.map(k => {
+        const it = cart[k];
+        total += it.price * it.quantity;
+        return { id: it.id, name: it.name, price: it.price, quantity: it.quantity };
+      });
+
+      const orders = JSON.parse(localStorage.getItem('moms_orders') || '[]');
+      const order = { id: Date.now(), items, total, customer: { name, phone, address }, created: new Date().toISOString() };
+      orders.push(order);
+      writeOrders(orders);
+
+      // clear cart after saving order
+      localStorage.removeItem('moms_cart');
+
+      // redirect to payment with order id (we'll read from localStorage)
+      window.location.href = `payment.html?orderId=${order.id}`;
+    });
+  </script>
+</body>
+</html>
